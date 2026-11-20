@@ -1,0 +1,15 @@
+#cloud-config
+# Bootstrap for the Azure VM (see README §12). Installs Docker, clones the repo, generates secrets,
+# starts the stack and seeds demo data. Logs: /var/log/billing-up.log
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - git
+runcmd:
+  - fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  - usermod -aG docker azureuser
+  - git clone https://github.com/CrnBilg/se4458-billing-assistant.git /opt/billing
+  - [bash, -c, 'cd /opt/billing && printf "JWT_SECRET=%s\nPOSTGRES_PASSWORD=%s\nGEMINI_API_KEY=\nGEMINI_MODEL=gemini-3.8-flash,gemini-3.5-flash,gemini-3.1-flash-lite\n" "$(openssl rand -hex 32)" "$(openssl rand -hex 16)" > .env && chmod 600 .env && chown -R azureuser:azureuser /opt/billing']
+  - [bash, -c, 'cd /opt/billing && docker compose up -d --build > /var/log/billing-up.log 2>&1']
+  - [bash, -c, 'sleep 20; cd /opt/billing && docker compose exec -T billing-api python -m app.seed >> /var/log/billing-up.log 2>&1']

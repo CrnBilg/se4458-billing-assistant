@@ -53,15 +53,23 @@ class GeminiLLM:
     """Google Gemini via the google-genai SDK, with automatic function calling disabled:
     the model only *proposes* calls; the agent executes them and sends results back."""
 
-    def __init__(self, api_key: str, model: str, max_retries: int = 3):
+    def __init__(self, api_key: str, model: str, max_retries: int = 2):
         if not api_key:
             raise ValueError("GEMINI_API_KEY is not set (see agent/.env.example).")
         from google import genai
 
         self._client = genai.Client(api_key=api_key)
-        self.model = model
-        self.name = f"gemini:{model}"
+        # "model-a,model-b": try in order; move to the next one when a model is overloaded
+        # (429/5xx after retries) or retired (404). Free-tier models change often.
+        self.models = [m.strip() for m in model.split(",") if m.strip()]
+        if not self.models:
+            raise ValueError("GEMINI_MODEL is empty.")
+        self.model = self.models[0]
         self.max_retries = max_retries
+
+    @property
+    def name(self) -> str:
+        return f"gemini:{self.model}"
 
     def _contents(self, messages: list[Message]):
         from google.genai import types
@@ -114,17 +122,29 @@ class GeminiLLM:
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         )
         contents = self._contents(messages)
-        for attempt in range(self.max_retries + 1):
-            try:
-                resp = await self._client.aio.models.generate_content(
-                    model=self.model, contents=contents, config=config
-                )
+        resp, last_error = None, None
+        for model in self.models:
+            for attempt in range(self.max_retries + 1):
+                try:
+                    resp = await self._client.aio.models.generate_content(
+                        model=model, contents=contents, config=config
+                    )
+                    self.model = model
+                    break
+                except errors.APIError as exc:
+                    last_error = exc
+                    if exc.code == 404:  # model retired for this key -> next model
+                        break
+                    if exc.code in (429, 500, 503):  # busy / quota -> back off, then next model
+                        if attempt < self.max_retries:
+                            await asyncio.sleep(2 * (attempt + 1) ** 2)
+                            continue
+                        break
+                    raise
+            if resp is not None:
                 break
-            except errors.APIError as exc:  # free tier: back off on 429 / transient 5xx
-                if exc.code in (429, 500, 503) and attempt < self.max_retries:
-                    await asyncio.sleep(2 * (attempt + 1) ** 2)
-                    continue
-                raise
+        if resp is None:
+            raise last_error
 
         candidate = resp.candidates[0] if resp.candidates else None
         raw = candidate.content if candidate else None

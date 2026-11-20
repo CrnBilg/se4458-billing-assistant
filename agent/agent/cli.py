@@ -70,7 +70,11 @@ async def main() -> int:
                 break
             if not question:
                 continue
-            reply = await agent.ask(question)
+            try:
+                reply = await agent.ask(question)
+            except Exception as exc:  # e.g. LLM quota/model errors: report and keep the session
+                print(f"[error] {type(exc).__name__}: {exc}\n")
+                continue
             if not args.no_trace:
                 print_trace(reply, color)
             print(f"Assistant: {reply.text}\n")

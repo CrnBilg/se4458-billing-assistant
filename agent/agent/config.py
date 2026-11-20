@@ -20,7 +20,8 @@ MCP_SERVER_SCRIPT = os.getenv(
 )
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# Comma-separated fallback list; the first one that answers is used.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash,gemini-3.5-flash,gemini-3.1-flash-lite")
 
 MAX_TOOL_ROUNDS = int(os.getenv("AGENT_MAX_TOOL_ROUNDS", "6"))
 TRACE_DIR = Path(os.getenv("AGENT_TRACE_DIR", Path(__file__).resolve().parent.parent / "traces"))
