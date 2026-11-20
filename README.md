@@ -12,7 +12,7 @@ grounded answer that cites guide sections.
 | Gateway URL (Azure) | `http://172.213.13.11:8000` |
 | Swagger UI | `http://172.213.13.11:8000/api/v1/docs` |
 | OpenAPI spec | `http://172.213.13.11:8000/api/v1/openapi.json` (also committed: [`docs/openapi.json`](docs/openapi.json)) |
-| Demo video | __VIDEO_LINK__ |
+| Demo video | _(add your video link here)_ |
 
 ---
 
@@ -180,7 +180,10 @@ HTTP/1.1 404 Not Found
 {"message":"no Route matched with those values"}
 ```
 
-__GATEWAY_EVIDENCE__
+**Live check on Azure** (public route, 401 at the gateway with `X-Request-ID`, protected route with
+token, 403 for another subscriber, 404 for an unknown version):
+
+![Gateway checks on Azure](docs/screenshots/01-gateway-checks-azure.jpg)
 
 ## 6. Authentication and authorization
 
@@ -286,7 +289,21 @@ unique — the database itself rejects duplicate payments; money is `NUMERIC(12,
 
 * **Three distinct retrieval queries** — `python mcp_server/demo_queries.py` (real MCP client):
 
-__MCP_DEMO__
+```text
+MCP tools: ['search_billing_documentation'] 
+
+QUERY: How much does extra internet cost?
+  section 8.1  score 9.801  What is the cost of extra internet?: Each additional 10 GB block beyond 20 GB costs $10. Partially used blocks are rounded up. See Section 3.2....
+  section 3.2  score 6.286  Additional internet blocks: Each additional **10 GB block** costs **$10**. A partially used additional block is charged as a full block. F...
+
+QUERY: What is the due date of a monthly bill?
+  section 6.1  score 8.997  Due date: A monthly bill is due **15 calendar days after the end of its billing month**. For example, an October 2026 bi...
+  section 6.2  score 4.575  Late payment reminder: An unpaid bill may trigger a reminder after its due date. The reminder itself does not add a fee....
+
+QUERY: How can I dispute a charge?
+  section 8.4  score 5.628  How can I dispute a charge?: Submit the billing period, disputed amount, and explanation within 15 days of bill issuance. See Section 7....
+  section 7.1  score 3.59   Dispute window: Subscribers may submit a billing dispute within **15 calendar days of the bill issue date**....
+```
 
 ## 9. AI agent
 
@@ -307,7 +324,42 @@ __MCP_DEMO__
 
 ## 10. Demo evidence
 
-__DEMO_EVIDENCE__
+All four runs below were made **live on Azure** with Gemini, logged in as subscriber `5551001`.
+Full step-by-step tool traces (tool names, inputs, results, durations, final answers):
+**[`docs/demo-traces.md`](docs/demo-traces.md)**.
+
+| Scenario | Question | Tools chosen by the LLM | Result |
+|---|---|---|---|
+| MCP only | "How much does extra internet cost?" | `search_billing_documentation` → §8.1, §3.2, §4.3 | "$10 per additional 10 GB block, rounded up (Guide §3.2, §8.1)" |
+| REST only | "What is my October bill?" | `query_bill`, then `query_bill_detailed` (via Kong) | $80 total, internet $70, phone $10, due Nov 15, UNPAID |
+| MCP + REST | "Why is my October bill higher? Explain my internet charge…" | `query_bill_detailed` **and** `search_billing_documentation` in one round | 35 GB used, 15 GB over 20 GB → $50 base + 2 × $10 = $70 (cites Guide §3.1) |
+| Payment | "Pay 30 dollars of my October bill" → "yes" | `pay_bill` → **CONFIRMATION_REQUIRED** (nothing paid) → after "yes": Pay Bill API | `SUCCESS`, transaction `AGT-388172ca3e1e450d`, remaining $50, PARTIALLY_PAID |
+
+Example trace — combined scenario (abbreviated CLI output):
+
+```text
+You: Why is my October bill higher? Explain my internet charge with the pricing rules.
+  --- tool trace ---
+  1. [LLM] gemini:gemini-3.5-flash  (12013 ms)
+       out: {"tool_calls": [{"name": "query_bill_detailed", "args": {"month": 10, "year": 2026}},
+             {"name": "search_billing_documentation", "args": {"query": "internet extra block pricing internet allowance"}}]}
+  2. [REST] query_bill_detailed  (28 ms)
+       in : {"month": 10, "year": 2026}
+       out: total=80.0 paid=30.0 remaining=50.0 PARTIALLY_PAID, internet 35.0 GB = $70.0, phone 1350 min = $10.0
+  3. [MCP] search_billing_documentation  (10 ms)
+       in : {"query": "internet extra block pricing internet allowance"}
+       out: sections 8.1, 3.1, 4.3
+  4. [LLM] gemini:gemini-3.5-flash  (23284 ms)
+       out: final answer
+  ------------------
+Assistant: Your October 2026 bill was higher because you exceeded your base allowances ... Internet
+Charge Breakdown ($70): Base Charge ($50) includes up to 20 GB (Guide §3.1). You used 35,000 MB
+(~35 GB), 15 GB over the allowance ... 2 extra 10 GB blocks × $10 = $20 ...
+```
+
+**Note on the live demo data:** after this demo, subscriber `5551001`'s October bill on Azure shows
+$30 paid / $50 remaining. To restore the original seed state:
+`cd /opt/billing && sudo docker compose down -v && sudo docker compose up -d && sleep 15 && sudo docker compose exec -T billing-api python -m app.seed`
 
 ## 11. Unit tests
 
@@ -328,7 +380,16 @@ pip install -r agent/requirements-dev.txt     # installs everything for the thre
 | `mcp_server` | 25 | chunking, section ids, retrieval relevance, stemming/synonyms, index persistence ("index once"), MCP tool schema and calls over stdio |
 | `agent` | 19 | MCP-only / REST-only / combined scenarios, payment only after "yes", cancel on other reply, retry idempotency, no access to other subscribers, error handling, Gemini message translation and model fallback |
 
-__TEST_EVIDENCE__
+**Evidence of a successful run** (full output: [`docs/test-results.txt`](docs/test-results.txt)):
+
+```text
+================ billing_api ================
+============================== 64 passed in 2.28s ==============================
+================ mcp_server ================
+============================== 25 passed in 4.59s ==============================
+================ agent ================
+============================== 19 passed in 9.28s ==============================
+```
 
 ## 12. Cloud deployment (Azure)
 

@@ -1,0 +1,141 @@
+================ billing_api ================
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.1.1, pluggy-1.6.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /home/claude/billing-assistant/billing_api
+configfile: pytest.ini
+testpaths: tests
+plugins: platformdirs-4.13.5, anyio-4.15.1, asyncio-1.5.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 64 items
+tests/test_add_usage.py::test_phone_event_adds_10_minutes PASSED         [  1%]
+tests/test_add_usage.py::test_internet_event_adds_1_mb_and_totals_accumulate PASSED [  3%]
+tests/test_add_usage.py::test_usage_type_is_case_insensitive PASSED      [  4%]
+tests/test_add_usage.py::test_periods_are_tracked_separately PASSED      [  6%]
+tests/test_add_usage.py::test_subscriber_token_cannot_add_usage PASSED   [  7%]
+tests/test_add_usage.py::test_unknown_subscriber_is_404 PASSED           [  9%]
+tests/test_add_usage.py::test_invalid_month_is_422 PASSED                [ 10%]
+tests/test_add_usage.py::test_invalid_usage_type_is_422 PASSED           [ 12%]
+tests/test_add_usage.py::test_non_positive_count_is_422 PASSED           [ 14%]
+tests/test_auth.py::test_token_success_returns_bearer_jwt PASSED         [ 15%]
+tests/test_auth.py::test_token_wrong_password_is_401 PASSED              [ 17%]
+tests/test_auth.py::test_token_unknown_subscriber_same_error_as_wrong_password PASSED [ 18%]
+tests/test_auth.py::test_protected_route_without_token_is_401 PASSED     [ 20%]
+tests/test_auth.py::test_garbage_token_is_401 PASSED                     [ 21%]
+tests/test_auth.py::test_expired_token_is_401 PASSED                     [ 23%]
+tests/test_auth.py::test_token_signed_with_other_secret_is_rejected PASSED [ 25%]
+tests/test_billing_logic.py::test_phone_charge[0-0] PASSED               [ 26%]
+tests/test_billing_logic.py::test_phone_charge[1000-0] PASSED            [ 28%]
+tests/test_billing_logic.py::test_phone_charge[1001-10] PASSED           [ 29%]
+tests/test_billing_logic.py::test_phone_charge[2000-10] PASSED           [ 31%]
+tests/test_billing_logic.py::test_phone_charge[2001-20] PASSED           [ 32%]
+tests/test_billing_logic.py::test_phone_charge[1350-10] PASSED           [ 34%]
+tests/test_billing_logic.py::test_internet_charge[0-50] PASSED           [ 35%]
+tests/test_billing_logic.py::test_internet_charge[20000-50] PASSED       [ 37%]
+tests/test_billing_logic.py::test_internet_charge[20001-60] PASSED       [ 39%]
+tests/test_billing_logic.py::test_internet_charge[21000-60] PASSED       [ 40%]
+tests/test_billing_logic.py::test_internet_charge[30000-60] PASSED       [ 42%]
+tests/test_billing_logic.py::test_internet_charge[30001-70] PASSED       [ 43%]
+tests/test_billing_logic.py::test_internet_charge[35000-70] PASSED       [ 45%]
+tests/test_billing_logic.py::test_worked_example_is_80_dollars PASSED    [ 46%]
+tests/test_billing_logic.py::test_bill_status_transitions PASSED         [ 48%]
+tests/test_billing_logic.py::test_due_date_is_15_days_after_month_end PASSED [ 50%]
+tests/test_calculate_bill.py::test_worked_example_total_is_80 PASSED     [ 51%]
+tests/test_calculate_bill.py::test_zero_usage_bills_the_internet_base_fee PASSED [ 53%]
+tests/test_calculate_bill.py::test_recalculation_picks_up_new_usage PASSED [ 54%]
+tests/test_calculate_bill.py::test_bill_with_payment_cannot_be_recalculated PASSED [ 56%]
+tests/test_calculate_bill.py::test_unknown_subscriber_is_404 PASSED      [ 57%]
+tests/test_calculate_bill.py::test_subscriber_token_is_forbidden PASSED  [ 59%]
+tests/test_calculate_bill.py::test_missing_token_is_401 PASSED           [ 60%]
+tests/test_calculate_bill.py::test_invalid_year_is_422 PASSED            [ 62%]
+tests/test_pay_bill.py::test_partial_payment_reduces_balance_but_bill_not_paid PASSED [ 64%]
+tests/test_pay_bill.py::test_two_payments_settle_the_bill PASSED         [ 65%]
+tests/test_pay_bill.py::test_duplicate_transaction_id_is_rejected_and_balance_unchanged PASSED [ 67%]
+tests/test_pay_bill.py::test_amount_above_balance_is_rejected PASSED     [ 68%]
+tests/test_pay_bill.py::test_paying_an_already_paid_bill_is_409 PASSED   [ 70%]
+tests/test_pay_bill.py::test_subscriber_cannot_pay_someone_elses_bill PASSED [ 71%]
+tests/test_pay_bill.py::test_missing_token_is_401 PASSED                 [ 73%]
+tests/test_pay_bill.py::test_bill_not_calculated_is_404 PASSED           [ 75%]
+tests/test_pay_bill.py::test_non_positive_amount_is_422 PASSED           [ 76%]
+tests/test_pay_bill.py::test_more_than_two_decimal_places_is_422 PASSED  [ 78%]
+tests/test_pay_bill.py::test_missing_transaction_id_is_422 PASSED        [ 79%]
+tests/test_query_bill.py::test_query_bill_needs_no_token_and_returns_stored_bill PASSED [ 81%]
+tests/test_query_bill.py::test_query_bill_reflects_partial_payment PASSED [ 82%]
+tests/test_query_bill.py::test_bill_not_calculated_is_404 PASSED         [ 84%]
+tests/test_query_bill.py::test_unknown_subscriber_looks_the_same_as_missing_bill PASSED [ 85%]
+tests/test_query_bill.py::test_invalid_month_is_422 PASSED               [ 87%]
+tests/test_query_bill.py::test_invalid_subscriber_format_is_422 PASSED   [ 89%]
+tests/test_query_bill_detailed.py::test_detailed_breakdown_matches_worked_example PASSED [ 90%]
+tests/test_query_bill_detailed.py::test_usage_list_is_paged PASSED       [ 92%]
+tests/test_query_bill_detailed.py::test_subscriber_cannot_read_another_subscribers_bill PASSED [ 93%]
+tests/test_query_bill_detailed.py::test_admin_can_read_any_bill PASSED   [ 95%]
+tests/test_query_bill_detailed.py::test_missing_token_is_401 PASSED      [ 96%]
+tests/test_query_bill_detailed.py::test_bill_not_calculated_is_404 PASSED [ 98%]
+tests/test_query_bill_detailed.py::test_invalid_paging_params_are_422 PASSED [100%]
+============================== 64 passed in 2.28s ==============================
+================ mcp_server ================
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.1.1, pluggy-1.6.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /home/claude/billing-assistant/mcp_server
+configfile: pytest.ini
+testpaths: tests
+plugins: platformdirs-4.13.5, anyio-4.15.1, asyncio-1.5.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 25 items
+tests/test_indexer.py::test_every_numbered_section_becomes_a_chunk PASSED [  4%]
+tests/test_indexer.py::test_document_id_and_headings_are_extracted PASSED [  8%]
+tests/test_indexer.py::test_no_empty_chunks_and_headings_in_code_fences_are_ignored PASSED [ 12%]
+tests/test_indexer.py::test_relevant_section_is_in_top_3[extra internet cost-3.2] PASSED [ 16%]
+tests/test_indexer.py::test_relevant_section_is_in_top_3[additional 10 GB block price-3.2] PASSED [ 20%]
+tests/test_indexer.py::test_relevant_section_is_in_top_3[when is my bill due-6.1] PASSED [ 24%]
+tests/test_indexer.py::test_relevant_section_is_in_top_3[how many free phone minutes-2.1] PASSED [ 28%]
+tests/test_indexer.py::test_relevant_section_is_in_top_3[dispute window-7.1] PASSED [ 32%]
+tests/test_indexer.py::test_relevant_section_is_in_top_3[can I pay only part of my bill-8.3] PASSED [ 36%]
+tests/test_indexer.py::test_relevant_section_is_in_top_3[why is my bill higher-8.2] PASSED [ 40%]
+tests/test_indexer.py::test_relevant_section_is_in_top_3[service restriction unpaid-6.3] PASSED [ 44%]
+tests/test_indexer.py::test_relevant_section_is_in_top_3[payment confirmation before paying-5.2] PASSED [ 48%]
+tests/test_indexer.py::test_heading_match_outranks_passing_mention PASSED [ 52%]
+tests/test_indexer.py::test_synonym_expansion_maps_extra_data_charges_to_internet_blocks PASSED [ 56%]
+tests/test_indexer.py::test_stemming_matches_word_forms PASSED           [ 60%]
+tests/test_indexer.py::test_results_are_ranked_and_limited PASSED        [ 64%]
+tests/test_indexer.py::test_nonsense_query_returns_nothing PASSED        [ 68%]
+tests/test_indexer.py::test_save_and_load_roundtrip_gives_identical_results PASSED [ 72%]
+tests/test_indexer.py::test_load_or_build_reuses_saved_index_and_rebuilds_when_document_changes PASSED [ 76%]
+tests/test_mcp_server.py::test_server_exposes_the_required_tool_with_a_schema PASSED [ 80%]
+tests/test_mcp_server.py::test_search_returns_section_references PASSED  [ 84%]
+tests/test_mcp_server.py::test_max_results_is_respected_and_clamped PASSED [ 88%]
+tests/test_mcp_server.py::test_empty_query_is_a_tool_error PASSED        [ 92%]
+tests/test_mcp_server.py::test_unrelated_query_returns_no_matches_instead_of_guessing PASSED [ 96%]
+tests/test_mcp_server.py::test_index_file_is_created_once_and_reused PASSED [100%]
+============================== 25 passed in 4.59s ==============================
+================ agent ================
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.1.1, pluggy-1.6.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /home/claude/billing-assistant/agent
+configfile: pytest.ini
+testpaths: tests
+plugins: platformdirs-4.13.5, anyio-4.15.1, asyncio-1.5.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 19 items
+tests/test_agent.py::test_mcp_only_scenario PASSED                       [  5%]
+tests/test_agent.py::test_rest_only_scenario PASSED                      [ 10%]
+tests/test_agent.py::test_combined_mcp_and_rest_scenario PASSED          [ 15%]
+tests/test_agent.py::test_payment_is_not_made_until_user_says_yes PASSED [ 21%]
+tests/test_agent.py::test_any_other_reply_cancels_the_payment PASSED     [ 26%]
+tests/test_agent.py::test_llm_cannot_skip_confirmation_by_calling_pay_twice PASSED [ 31%]
+tests/test_agent.py::test_turkish_confirmation_is_accepted PASSED        [ 36%]
+tests/test_agent.py::test_overpayment_error_from_api_reaches_the_llm PASSED [ 42%]
+tests/test_agent.py::test_retry_after_network_failure_reuses_the_transaction_id PASSED [ 47%]
+tests/test_agent.py::test_subscriber_number_in_prompt_cannot_reach_other_accounts PASSED [ 52%]
+tests/test_agent.py::test_no_tool_accepts_a_subscriber_number PASSED     [ 57%]
+tests/test_agent.py::test_bill_not_calculated_error_is_given_to_the_llm PASSED [ 63%]
+tests/test_agent.py::test_unknown_tool_and_bad_arguments_do_not_crash PASSED [ 68%]
+tests/test_agent.py::test_tool_loop_is_bounded PASSED                    [ 73%]
+tests/test_gemini_adapter.py::test_requires_an_api_key PASSED            [ 78%]
+tests/test_gemini_adapter.py::test_history_is_translated_to_gemini_contents PASSED [ 84%]
+tests/test_gemini_adapter.py::test_tool_schemas_are_valid_function_declarations PASSED [ 89%]
+tests/test_gemini_adapter.py::test_falls_back_to_next_model_when_busy_or_retired PASSED [ 94%]
+tests/test_gemini_adapter.py::test_other_api_errors_are_not_retried PASSED [100%]
+============================== 19 passed in 9.28s ==============================

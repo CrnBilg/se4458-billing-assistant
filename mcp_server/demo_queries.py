@@ -16,7 +16,7 @@ from mcp.client.stdio import stdio_client
 SERVER = Path(__file__).resolve().parent / "server.py"
 QUERIES = [
     "How much does extra internet cost?",
-    "When is my bill due and can service be restricted for late payment?",
+    "What is the due date of a monthly bill?",
     "How can I dispute a charge?",
 ]
 
