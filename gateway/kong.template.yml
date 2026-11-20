@@ -1,0 +1,80 @@
+# Kong 3.x declarative (DB-less) configuration -- API Gateway for the Billing REST API.
+# __JWT_SECRET__ and __JWT_ISSUER__ are filled in from the environment when the container starts
+# (see docker-compose.yml), so no secret is committed to git.
+#
+# Every public route is versioned (/api/v1/...). The path is forwarded unchanged (strip_path:
+# false), so a future /api/v2 can be routed to a new service without touching v1 clients.
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: billing-api-v1
+    url: http://billing-api:8000
+    connect_timeout: 5000
+    read_timeout: 15000
+    routes:
+      # ---- public routes (no JWT at the gateway) -------------------------------------------
+      - name: auth-token-v1
+        paths: ["/api/v1/auth/token"]
+        methods: [POST]
+        strip_path: false
+
+      - name: query-bill-v1            # assignment table: Query Bill -> Authentication NO
+        paths: ["~/api/v1/bills/[A-Za-z0-9_-]+/[0-9]+/[0-9]+$"]
+        methods: [GET]
+        strip_path: false
+
+      - name: api-docs-v1              # Swagger UI + OpenAPI document
+        paths: ["/api/v1/docs", "/api/v1/openapi.json"]
+        methods: [GET]
+        strip_path: false
+
+      # ---- protected routes (valid JWT required at the gateway) ----------------------------
+      - name: query-bill-detailed-v1
+        paths: ["~/api/v1/bills/[A-Za-z0-9_-]+/[0-9]+/[0-9]+/detailed$"]
+        methods: [GET]
+        strip_path: false
+        plugins:
+          - name: jwt
+            config: {key_claim_name: iss, claims_to_verify: [exp]}
+
+      - name: pay-bill-v1
+        paths: ["/api/v1/payments"]
+        methods: [POST]
+        strip_path: false
+        plugins:
+          - name: jwt
+            config: {key_claim_name: iss, claims_to_verify: [exp]}
+
+      - name: calculate-bill-v1
+        paths: ["/api/v1/bills/calculate"]
+        methods: [POST]
+        strip_path: false
+        plugins:
+          - name: jwt
+            config: {key_claim_name: iss, claims_to_verify: [exp]}
+
+      - name: add-usage-v1
+        paths: ["/api/v1/usage"]
+        methods: [POST]
+        strip_path: false
+        plugins:
+          - name: jwt
+            config: {key_claim_name: iss, claims_to_verify: [exp]}
+
+# The billing API signs tokens with HS256 and iss=__JWT_ISSUER__; Kong verifies them with the same
+# shared secret. Role and ownership checks (admin-only routes, "only your own bill") stay in the API.
+consumers:
+  - username: billing-api-token-issuer
+    jwt_secrets:
+      - key: "__JWT_ISSUER__"
+        algorithm: HS256
+        secret: "__JWT_SECRET__"
+
+plugins:
+  # Request id on every call for tracing (returned to the client as X-Request-ID).
+  - name: correlation-id
+    config: {header_name: X-Request-ID, generator: uuid, echo_downstream: true}
+  # Group 2 has no business rate limit; this is only a protective ceiling against abuse.
+  - name: rate-limiting
+    config: {minute: 120, policy: local, limit_by: ip}

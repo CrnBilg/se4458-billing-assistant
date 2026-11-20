@@ -1,0 +1,78 @@
+# Whole system on one Docker host (laptop or the Azure VM):
+#   postgres <- billing-api <- kong (API Gateway, public :8000)
+#   mcp-server (separate MCP path, internal)
+#   agent (CLI chat, run on demand: docker compose run --rm agent)
+#
+#   cp .env.example .env   # set JWT_SECRET, POSTGRES_PASSWORD, GEMINI_API_KEY
+#   docker compose up -d --build
+#   docker compose exec billing-api python -m app.seed
+#   docker compose run --rm agent
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: billing
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: billing
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billing -d billing"]
+      interval: 5s
+      retries: 10
+
+  billing-api:
+    build: ./billing_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://billing:${POSTGRES_PASSWORD}@postgres:5432/billing
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_ISSUER: billing-api
+    depends_on:
+      postgres: {condition: service_healthy}
+    # Not published: reachable only through the gateway.
+
+  kong:
+    image: kong:3.9
+    restart: unless-stopped
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /tmp/kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_LISTEN: "off"
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: billing-api
+    volumes: ["./gateway/kong.template.yml:/kong/kong.template.yml:ro"]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        sed -e "s|__JWT_SECRET__|$${JWT_SECRET}|" -e "s|__JWT_ISSUER__|$${JWT_ISSUER}|"
+        /kong/kong.template.yml > /tmp/kong.yml
+        && exec /docker-entrypoint.sh kong docker-start
+    ports: ["8000:8000"]
+    depends_on: [billing-api]
+
+  mcp-server:
+    build: ./mcp_server
+    restart: unless-stopped
+    # Internal only. Publish "8001:8000" if you want to run the agent on another machine.
+
+  agent:
+    build: ./agent
+    profiles: ["cli"]
+    stdin_open: true
+    tty: true
+    environment:
+      GATEWAY_URL: http://kong:8000
+      MCP_SERVER_URL: http://mcp-server:8000/mcp
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+    volumes: ["./agent/traces:/srv/traces"]
+    depends_on: [kong, mcp-server]
+
+volumes:
+  pgdata:
